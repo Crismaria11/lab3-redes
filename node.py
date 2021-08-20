@@ -1,5 +1,5 @@
 #libraries
-from _typeshed import NoneType
+
 import asyncio
 import logging
 from aioconsole import aprint
@@ -29,7 +29,7 @@ class Node(slixmpp.ClientXMPP):
             self.nick = jid.split('@')[0]
         else:
             self.nick = nickname
-    
+                
         # Event for maganage conection
         self.connected_event = asyncio.Event()
 

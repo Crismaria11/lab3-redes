@@ -6,11 +6,23 @@ from optparse import OptionParser
 from node import Node
 from aioconsole import ainput
 
+from module import *
+from RoutingTable import *
+
+from LSR import LSR
+
 """
 Function that manages UI
 """
-async def main(node : Node):
-    global msg
+async def main(node : LSR):
+    
+    """
+    Aqui agregar la implementacion de cada algoritmo
+    """
+    node.init_listener()
+    
+    node.send_hello('roberto@alumchat.xyz', node.boundjid)
+
     is_connected = True
     while is_connected:
         print("-"*20) 
@@ -59,8 +71,16 @@ if __name__ == "__main__":
     logging.basicConfig(level=opts.loglevel,
                         format='%(levelname)-8s %(message)s')
 
+
+    assignedNode = 'A'
+    topo = infoGetter(assignedNode,'topo.txt')
+    names = infoGetter(assignedNode,'names.txt')
+    assignedNodes = {}
+    for i in topo:
+        assignedNodes[i] = names[i]    
+
     try:
-        node = Node(opts.jid, opts.password, opts.is_new)
+        node = LSR(opts.jid, opts.password, assignedNode, assignedNodes)
         if opts.is_new:
             print("Registrando ...")
         print("Conectando ....")

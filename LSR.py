@@ -1,4 +1,8 @@
-# from slixmpp.basexmpp import BaseXMPP
+from slixmpp.basexmpp import BaseXMPP
+from node import Node
+
+from asyncio import sleep
+from aioconsole import aprint
 
 
 """
@@ -12,17 +16,22 @@
 ---------
 """
 
-class LSR(object):
+class LSR(Node):
     
-    def __init__(self):
+    def __init__(self, jid, password, entity, asoc_nodes = None):
+        super().__init__(jid, password)
         self.LSA_seqnum = 0
         self.LSA = {}
-    
-    def send_hello(self):
+        self.entity = entity
+        self.basexmpp = BaseXMPP()
+        self.neighbors = asoc_nodes #should be a dict
+        self.neighbors_niknames = self.neighbors.keys() if self.neighbors != None else []
+
+    def send_hello(self, hto, hfrom):
         """
         Function for neighbor discovery
         """
-        return []
+        self.send_message(hto, "Hello")
 
     def eco(self):
         """
@@ -58,3 +67,14 @@ class LSR(object):
         """
         path = []
         return path.reverse()
+
+
+
+    async def update_tables(self):
+        while True:
+            await sleep(5)
+            print("--------------------->Updateado")
+
+
+    def init_listener(self):
+        self.loop.create_task(self.update_tables())
