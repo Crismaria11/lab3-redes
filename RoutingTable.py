@@ -8,7 +8,7 @@ Luis Quezada 18028
 Esteban del Valle 18221
 '''
 
-class RoutingTable(object):
+class RoutingTable:
 
 	vector_list = []
 	name = ""
