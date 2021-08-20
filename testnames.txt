@@ -1,1 +1,0 @@
-{"type":"names", "config":{“A”: a@alumchat.xyz,“B”: b@alumchat.xyz,“C”: c@alumchat.xyz,“D”: d@alumchat.xyz,}

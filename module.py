@@ -7,4 +7,8 @@ def jsonToDict(path):
 
 def topoGetter(node,path):
 	info = jsonToDict(path)
-	return info[node]
+	return info['config'][node]
+
+def asignGetter(path):
+	info = jsonToDict(path)
+	return info['config']
