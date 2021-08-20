@@ -1,3 +1,12 @@
+'''
+Universidad del Valle de Guatemala
+Redes - 2021
+module.py
+
+Roberto Figueroa 18306
+Luis Quezada 18028
+Esteban del Valle 18221
+'''
 
 import json
 
