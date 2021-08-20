@@ -14,13 +14,7 @@ slixmpp ([docs](https://slixmpp.readthedocs.io/en/latest/))
 3. Make sure all *requirements* and *libraries* are installed.
 4. Run (multiple ways)
 ```
-python3 client.py
-```
-```
 python3 client.py -j [your JID] -p [your password]
-```
-```
-python3 client.py -j [your JID]
 ```
 
 ## Components
