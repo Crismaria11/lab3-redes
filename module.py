@@ -5,10 +5,11 @@ def jsonToDict(path):
 	with open(path) as json_file:
 		return json.load(json_file)
 
-def topoGetter(node,path):
+def infoGetter(node,path):
 	info = jsonToDict(path)
-	return info['config'][node]
-
-def asignGetter(path):
-	info = jsonToDict(path)
-	return info['config']
+	if info['type'] == 'topo':
+		return info['config'][node]
+	elif info['type'] == 'names':
+		return info['config']
+	else:
+		return -1

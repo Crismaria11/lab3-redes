@@ -3,8 +3,8 @@ from module import *
 
 assignedNode = 'A'
 
-topo = topoGetter(assignedNode,'topo.txt')
+topo = infoGetter(assignedNode,'topo.txt')
 print(topo)
 
-names = asignGetter('names.txt')
+names = infoGetter(assignedNode,'names.txt')
 print(names)
