@@ -92,14 +92,3 @@ class Node(slixmpp.ClientXMPP):
         if msg['type'] in ('normal', 'chat'):
             await aprint("\n{}".format(msg['body']))
 
-    """
-    Function for send messages
-    """
-    def message_to(self, mto, body):
-        self.send_message(
-            mfrom=self.boundjid,
-            mto=mto,
-            mbody=body, #body should go with Network layer attributes
-            mnick=self.nick
-        )
-   

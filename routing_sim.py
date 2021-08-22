@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import getpass
 from aioconsole.stream import aprint
@@ -19,9 +20,12 @@ async def main(node : LSR):
     """
     Aqui agregar la implementacion de cada algoritmo
     """
-    node.init_listener()
+    # node.init_listener()
     
     node.send_hello('roberto@alumchat.xyz', node.boundjid)
+    node.eco('roberto@alumchat.xyz', node.boundjid)
+    await asyncio.sleep(3)
+    node.send_topo_package('roberto@alumchat.xyz')
 
     is_connected = True
     while is_connected:
