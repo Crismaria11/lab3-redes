@@ -6,6 +6,7 @@ from aioconsole import aprint
 from time import time
 from xml.etree import ElementTree as ET
 import json
+import asyncio
 
 """
 ---------
@@ -28,6 +29,7 @@ class LSR(Node):
         self.basexmpp = BaseXMPP()
         self.neighbors = asoc_nodes #should be a dict
         self.neighbors_niknames = self.neighbors.keys() if self.neighbors != None else []
+        self.topo = {}
         self.build_topo_package()
 
     def send_hello(self, hto, hfrom):
@@ -43,6 +45,7 @@ class LSR(Node):
         """
         Function for measure cost between neighbors
         """
+        print("Sending eco to {}".format(eco_to))
         self.send_message(
             mto=eco_to,
             mbody="<eco time='%f'></eco>" % time(),
@@ -60,6 +63,7 @@ class LSR(Node):
         self.LSA['weights'] = {}
         for node in self.neighbors_niknames:
             self.LSA['weights'][node] = 0
+        self.topo[self.LSA['node']] = self.LSA
 
     def update_topo_package(self, node, weight):
         """
@@ -73,6 +77,10 @@ class LSR(Node):
         """
         Send the topo package to neighbors
         """
+        self.LSA_seqnum += 1
+        self.LSA['seq'] = self.LSA_seqnum
+        self.LSA['age'] = time()
+        self.topo[self.LSA['node']] = self.LSA
         lsa_json = json.dumps(self.LSA)
         self.send_message(to, 
             "<pack lsa='%s'></pack>" % lsa_json,
@@ -100,8 +108,19 @@ class LSR(Node):
 
     async def update_tables(self):
         while True:
-            await sleep(5)
-            print("--------------------->Updateado")
+            for router in self.neighbors_niknames:
+                self.eco(self.neighbors[router], self.boundjid)
+            
+            await asyncio.sleep(5)
+            print("Sending packages to neighbors ... ")
+            for router in self.neighbors_niknames:
+                self.send_topo_package(self.neighbors[router])
+
+    def get_nickname(self, jid):
+        key_list = list(self.neighbors.keys())
+        val_list = list(self.neighbors.values())
+
+        return key_list[val_list.index(jid)]
 
 
     def init_listener(self):
@@ -117,16 +136,26 @@ class LSR(Node):
                 timestamp = xml_parse.attrib['time']
                 msg.reply("<a_eco time='%s'></a_eco>" % timestamp).send()
             elif msg['body'][1:6] == "a_eco":
+                pack_from = msg['from'].bare
+                node_entity = self.get_nickname(pack_from)
                 end_time = time()
                 msg_parse = ET.fromstring(msg['body'])
                 start_time = float(msg_parse.attrib['time'])
                 delta_time = (end_time - start_time) / 2
-                self.update_topo_package('B', delta_time)
+                delta_time = round(delta_time, 1)
+                self.update_topo_package(node_entity, delta_time)
             elif msg['body'][1:5] == "pack":
                 parse = ET.fromstring(msg['body'])
                 pack_json = parse.attrib['lsa']
                 lsa = json.loads(pack_json)
-                print("Recieved a pack", lsa)
+                if lsa['node'] not in self.topo.keys(): #means that is a new neighbor node
+                    self.topo[lsa['node']] = lsa
+                else: #check if it is a new topo package
+                    if self.topo[lsa['node']]['seq'] == lsa['seq']:
+                        pass #drop the package
+                    else:
+                        self.topo[lsa['node']] = lsa # update topo
+                print("This is topo for now: ", self.topo)
 
             else:
                 pass

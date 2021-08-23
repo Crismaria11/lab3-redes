@@ -20,12 +20,13 @@ async def main(node : LSR):
     """
     Aqui agregar la implementacion de cada algoritmo
     """
-    # node.init_listener()
-    
-    node.send_hello('roberto@alumchat.xyz', node.boundjid)
-    node.eco('roberto@alumchat.xyz', node.boundjid)
-    await asyncio.sleep(3)
-    node.send_topo_package('roberto@alumchat.xyz')
+
+    for router in node.neighbors_niknames:
+        node.send_presence_subscription(node.neighbors[router], node.boundjid)
+
+
+    node.init_listener()
+
 
     is_connected = True
     while is_connected:
@@ -64,6 +65,8 @@ if __name__ == "__main__":
                     action='store_const',
                     const=True, default=False)
 
+    optp.add_option("-r", "--router", dest="router",
+                    help="router nickname")
 
     opts, args = optp.parse_args()
 
@@ -71,12 +74,14 @@ if __name__ == "__main__":
         opts.jid = input("Username (JID): ")
     if opts.password is None:
         opts.password = getpass.getpass("Password: ")  
+    if opts.router is None:
+        opts.router = input("Router nickname")
 
     logging.basicConfig(level=opts.loglevel,
                         format='%(levelname)-8s %(message)s')
 
 
-    assignedNode = 'A'
+    assignedNode = opts.router
     topo = infoGetter(assignedNode,'topo.txt')
     names = infoGetter(assignedNode,'names.txt')
     assignedNodes = {}

@@ -37,6 +37,8 @@ class Node(slixmpp.ClientXMPP):
         self.add_event_handler('session_start', self.start)
         self.add_event_handler('message', self.message)
         self.add_event_handler('register', self.register)
+        self.add_event_handler('got_offline', self.node_disconnected)
+        self.add_event_handler('got_online', self.node_connected)
 
         #necessary plugins
         self.register_plugin('xep_0030') # Service Discovery
@@ -92,3 +94,9 @@ class Node(slixmpp.ClientXMPP):
         if msg['type'] in ('normal', 'chat'):
             await aprint("\n{}".format(msg['body']))
 
+    def node_connected(self, event):
+        print('--->{} is online'.format(event['from'].bare))
+
+    def node_disconnected(self, event):
+        print('--->{} is offline'.format(event['from'].bare))
+        
