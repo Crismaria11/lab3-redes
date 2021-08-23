@@ -45,7 +45,7 @@ class LSR(Node):
         """
         Function for measure cost between neighbors
         """
-        print("Sending eco to {}".format(eco_to))
+        # print("Sending eco to {}".format(eco_to))
         self.send_message(
             mto=eco_to,
             mbody="<eco time='%f'></eco>" % time(),
@@ -62,7 +62,7 @@ class LSR(Node):
         self.LSA['age'] = None
         self.LSA['weights'] = {}
         for node in self.neighbors_niknames:
-            self.LSA['weights'][node] = 0
+            self.LSA['weights'][node] = 10 # means that they are unavailable
         self.topo[self.LSA['node']] = self.LSA
 
     def update_topo_package(self, node, weight):
@@ -112,7 +112,7 @@ class LSR(Node):
                 self.eco(self.neighbors[router], self.boundjid)
             
             await asyncio.sleep(5)
-            print("Sending packages to neighbors ... ")
+            # print("Sending packages to neighbors ... ")
             for router in self.neighbors_niknames:
                 self.send_topo_package(self.neighbors[router])
 
@@ -125,6 +125,13 @@ class LSR(Node):
 
     def init_listener(self):
         self.loop.create_task(self.update_tables())
+
+    def flood(self, to, package):
+        
+        self.send_message(to, 
+            "<pack lsa='%s'></pack>" % package,
+            mfrom=self.boundjid,
+        )
 
     async def message(self, msg):
         if msg['type'] in ('normal', 'chat'):
@@ -145,16 +152,28 @@ class LSR(Node):
                 delta_time = round(delta_time, 1)
                 self.update_topo_package(node_entity, delta_time)
             elif msg['body'][1:5] == "pack":
+                # p_from = msg['from'].bare
+                # n_entity = self.get_nickname(p_from)
                 parse = ET.fromstring(msg['body'])
                 pack_json = parse.attrib['lsa']
                 lsa = json.loads(pack_json)
-                if lsa['node'] not in self.topo.keys(): #means that is a new neighbor node
+                n_entity = lsa['node']
+                if lsa['node'] not in self.topo.keys(): #means that is a new neighbor node, save it and resend (flood)
                     self.topo[lsa['node']] = lsa
-                else: #check if it is a new topo package
-                    if self.topo[lsa['node']]['seq'] == lsa['seq']:
+                    for neighbor in self.neighbors_niknames:
+                        if neighbor != n_entity:
+                            self.flood(self.neighbors[neighbor], json.dumps(lsa))
+                else: #check if it is not a new topo package
+                    if self.topo[lsa['node']]['seq'] >= lsa['seq']: #already taken 
+                        print("[X] dropping package because is old", lsa['node'] ,lsa['seq'])
                         pass #drop the package
                     else:
                         self.topo[lsa['node']] = lsa # update topo
+                        # apply flooding, sends package to child nodes except
+                        # node that the package comes from
+                        for neighbor in self.neighbors_niknames:
+                            if neighbor != n_entity:
+                                self.flood(self.neighbors[neighbor], json.dumps(lsa))
                 print("This is topo for now: ", self.topo)
 
             else:
