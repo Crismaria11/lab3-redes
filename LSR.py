@@ -7,6 +7,7 @@ from time import time
 from xml.etree import ElementTree as ET
 import json
 import asyncio
+import numpy as np
 
 """
 ---------
@@ -14,10 +15,12 @@ import asyncio
 |  Sec. |
 |  Age  |
 ---------
-| B | 4 |
-| E | 5 |
+| B | 0.3 |
+| E | 0.5 |
 ---------
 """
+
+EXPIRATION = 5
 
 class LSR(Node):
     
@@ -30,6 +33,8 @@ class LSR(Node):
         self.neighbors = asoc_nodes #should be a dict
         self.neighbors_niknames = self.neighbors.keys() if self.neighbors != None else []
         self.topo = {}
+        self.all_nodes = [self.entity]
+        self.ady_matrix = []
         self.build_topo_package()
 
     def send_hello(self, hto, hfrom):
@@ -64,10 +69,11 @@ class LSR(Node):
         for node in self.neighbors_niknames:
             self.LSA['weights'][node] = 10 # means that they are unavailable
         self.topo[self.LSA['node']] = self.LSA
+        
 
     def update_topo_package(self, node, weight):
         """
-        Function for package weights update
+        Function for package weights update+
         """
         self.LSA['weights'][node] = weight
 
@@ -133,6 +139,18 @@ class LSR(Node):
             mfrom=self.boundjid,
         )
 
+    def update_ady_matrix(self):
+        length = len(self.all_nodes)
+        self.ady_matrix = np.zeros(
+            (length, length), 
+            dtype=np.float16)
+        for row_node in self.all_nodes:
+            for col_node in self.topo[row_node]['weights'].keys():
+                row = self.all_nodes.index(row_node)
+                col = self.all_nodes.index(col_node)
+                self.ady_matrix[row][col] = self.topo[row_node]['weights'][col_node]
+
+
     async def message(self, msg):
         if msg['type'] in ('normal', 'chat'):
             if msg['body'][:7] in ("<hello>"):
@@ -163,10 +181,19 @@ class LSR(Node):
                     for neighbor in self.neighbors_niknames:
                         if neighbor != n_entity:
                             self.flood(self.neighbors[neighbor], json.dumps(lsa))
+                    if lsa['node'] not in self.all_nodes:
+                        self.all_nodes.append(lsa['node'])
+                        self.all_nodes.sort()
+                    self.update_ady_matrix()
+                    
                 else: #check if it is not a new topo package
-                    if self.topo[lsa['node']]['seq'] >= lsa['seq']: #already taken 
-                        print("[X] dropping package because is old", lsa['node'] ,lsa['seq'])
-                        pass #drop the package
+                    d_time = abs(float(self.topo[lsa['node']]['age']) - float(lsa['age']))
+                    if self.topo[lsa['node']]['seq'] >= lsa['seq']: #already taken
+                        if d_time > EXPIRATION:
+                            print("[X] dropping package because is old", lsa['node'] ,lsa['seq'])
+                            pass #drop the package
+                        
+
                     else:
                         self.topo[lsa['node']] = lsa # update topo
                         # apply flooding, sends package to child nodes except
@@ -174,7 +201,8 @@ class LSR(Node):
                         for neighbor in self.neighbors_niknames:
                             if neighbor != n_entity:
                                 self.flood(self.neighbors[neighbor], json.dumps(lsa))
-                print("This is topo for now: ", self.topo)
+                        self.update_ady_matrix()
+                print("This is topo for now: ", self.ady_matrix)
 
             else:
                 pass
