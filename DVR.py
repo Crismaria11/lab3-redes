@@ -46,6 +46,7 @@ class DVR(Node):
         self.topo = {}
         self.all_nodes = [self.entity]
         self.ady_matrix = []
+        self.prev_matrix = []
         self.build_topo_package()
 
     def send_hello(self, hto, hfrom):
@@ -162,8 +163,11 @@ class DVR(Node):
                 row = self.all_nodes.index(row_node)
                 col = self.all_nodes.index(col_node)
                 self.ady_matrix[row][col] = self.topo[row_node]['weights'][col_node]
-        # compare tables, update if diff
-        # iter for loop doing BF update if lower
+        
+        # compare tables, update if diff with Bellman Ford
+        optimized_matrix = shortest_path(self.ady_matrix,directed=True,method='BF',return_predecessors=False)
+        if np.allclose(self.ady_matrix,optimized_matrix) == False:
+            self.ady_matrix = optimized_matrix
 
     def bellmanFord(self, destiny):
         D, Pr = shortest_path(self.ady_matrix,directed=True,method='BF',return_predecessors=True)
