@@ -8,6 +8,7 @@ from xml.etree import ElementTree as ET
 import json
 import asyncio
 import numpy as np
+from scipy.sparse.csgraph import shortest_path
 
 """
 ---------
@@ -149,6 +150,17 @@ class LSR(Node):
                 row = self.all_nodes.index(row_node)
                 col = self.all_nodes.index(col_node)
                 self.ady_matrix[row][col] = self.topo[row_node]['weights'][col_node]
+
+    def dijkstra(self, destiny):
+        D, Pr = shortest_path(
+            self.ady_matrix, 
+            directed=True, 
+            method='D', 
+            return_predecessors=True)
+        _from = self.all_nodes.index(self.entity)
+        path = [destiny]
+        k = destiny
+
 
 
     async def message(self, msg):
