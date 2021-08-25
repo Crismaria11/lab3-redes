@@ -67,6 +67,8 @@ if __name__ == "__main__":
 
     optp.add_option("-r", "--router", dest="router",
                     help="router nickname")
+    optp.add_option("-a", "--algorithm", dest="algorithm",
+                    help="algorithm to use")
 
     opts, args = optp.parse_args()
 
@@ -86,18 +88,29 @@ if __name__ == "__main__":
     names = infoGetter(assignedNode,'names.txt')
     assignedNodes = {}
     for i in topo:
-        assignedNodes[i] = names[i]    
+        assignedNodes[i] = names[i] 
 
-    try:
+    if opts.algorithm == 'flooding':
+        node = FLOOD(opts.jid, opts.password, assignedNode, assignedNodes)
+    elif opts.algorithm == 'dvr':
+        node = DVR(opts.jid, opts.password, assignedNode, assignedNodes)
+    elif opts.algorithm == 'lsa':
         node = LSR(opts.jid, opts.password, assignedNode, assignedNodes)
-        if opts.is_new:
-            print("Registrando ...")
-        print("Conectando ....")
-        node.connect() 
-        node.loop.run_until_complete(node.connected_event.wait())
-        node.loop.create_task(main(node))
-        node.process(forever=False)
-    except Exception as e:
-        print("Error:", e)
-    finally:
-        node.disconnect()
+    else:
+        node = None
+
+    if node != None:
+        try:
+            if opts.is_new:
+                print("Registrando ...")
+            print("Conectando ....")
+            node.connect() 
+            node.loop.run_until_complete(node.connected_event.wait())
+            node.loop.create_task(main(node))
+            node.process(forever=False)
+        except Exception as e:
+            print("Error:", e)
+        finally:
+            node.disconnect()
+    else:
+        print("Algorithm not selected, run again with -a")
