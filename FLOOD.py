@@ -21,7 +21,7 @@ from scipy.sparse.csgraph import shortest_path
 ---------
 """
 
-EXPIRATION = 10
+EXPIRATION = 0.5
 
 class LSR(Node):
     
@@ -208,14 +208,9 @@ class LSR(Node):
                 else: #check if it is not a new topo package
                     d_time = float(lsa['age']) - float(self.topo[lsa['node']]['age']) 
                     if self.topo[lsa['node']]['seq'] >= lsa['seq']: #already taken
-                        if d_time > EXPIRATION:
-                            self.topo[lsa['node']] = lsa
-                            for neighbor in self.neighbors_niknames:
-                                if neighbor != n_entity:
-                                    self.flood(self.neighbors[neighbor], json.dumps(lsa))
-                        else: #means that router reset its seq number
-                            print("[X] dropping package because is repited or old, from: {}, seq: {}, delta time_ {}".format(lsa['node'] ,lsa['seq'], d_time))
-                            pass
+                            print("[X] dropping package because is old, from: {}, seq: {}, delta time_ {}".format(lsa['node'] ,lsa['seq'], d_time))
+                            pass #drop the package
+
                     else:
                         self.topo[lsa['node']] = lsa # update topo
                         # apply flooding, sends package to child nodes except
@@ -224,7 +219,7 @@ class LSR(Node):
                             if neighbor != n_entity:
                                 self.flood(self.neighbors[neighbor], json.dumps(lsa))
                         self.update_ady_matrix()
-                print("This is topo for now: \n", self.topo)
+                print("This is topo for now: \n", self.ady_matrix)
 
             elif msg['body'][1:5] == "msg":
                 msg_parse = ET.fromstring(msg['body'])
