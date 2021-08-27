@@ -10,8 +10,9 @@ from aioconsole import ainput
 from module import *
 from RoutingTable import *
 
-from LSR import LSR
 
+from LSR import LSR
+from FLOOD import Flood
 """
 Function that manages UI
 """
@@ -31,19 +32,19 @@ async def main(node : LSR):
     is_connected = True
     while is_connected:
         print("-"*20) 
-        print("Choose an algorithm:\n1.Flooding\n2.DVR\n3.LSR")
+        print("Choose an option:\n1.Send message\n2.Exit")
         opt = int( await ainput("Choose an option\n->"))
         if opt == 1:
-            #initilize flooding algorithm
-            pass 
+            dest = await ainput("Write jid dest: ")
+            msg = await ainput("Write message: ")
+            node.send_msg(
+                dest,
+                msg
+            )
         elif opt == 2:
-            #initialize dvr algorithm
-            pass
-        elif opt == 3:
-            #initialize lsr algorithm
-            pass
+            is_connected = False
+            node.disconnect()
         else:
-            #default algorithm or exit
             pass
 
         
@@ -89,7 +90,7 @@ if __name__ == "__main__":
         assignedNodes[i] = names[i]    
 
     try:
-        node = LSR(opts.jid, opts.password, assignedNode, assignedNodes)
+        node = Flood(opts.jid, opts.password, assignedNode, assignedNodes)
         if opts.is_new:
             print("Registrando ...")
         print("Conectando ....")

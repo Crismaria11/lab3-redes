@@ -37,6 +37,7 @@ class LSR(Node):
         self.all_nodes = [self.entity]
         self.ady_matrix = []
         self.build_topo_package()
+        self.short_matrix = None
 
     def send_hello(self, hto, hfrom):
         """
@@ -122,6 +123,8 @@ class LSR(Node):
             # print("Sending packages to neighbors ... ")
             for router in self.neighbors_niknames:
                 self.send_topo_package(self.neighbors[router])
+            self.dijkstra() #update shortes path matrix
+                
 
     def get_nickname(self, jid):
         key_list = list(self.neighbors.keys())
@@ -140,6 +143,18 @@ class LSR(Node):
             mfrom=self.boundjid,
         )
 
+    def send_msg(self, to, msg): # to should be a character
+        path = self.get_shortest_path(to)
+        print("%s: my best path: %s" %(self.entity,path))
+        if len(path) > 1:
+            self.send_message(
+                mto=self.neighbors[path[1]],
+                mbody="<msg chat='%s' to='%s' ></msg>" %(msg, to),
+                mfrom=self.boundjid
+            )
+
+
+
     def update_ady_matrix(self):
         
         length = len(self.all_nodes)
@@ -155,19 +170,34 @@ class LSR(Node):
                     return
                 self.ady_matrix[row][col] = self.topo[row_node]['weights'][col_node]
 
-    def dijkstra(self, destiny):
-        D, Pr = shortest_path(
-            self.ady_matrix, 
-            directed=True, 
-            method='D', 
-            return_predecessors=True)
+    def parse_path(self, path):
+        return [self.all_nodes[i] for i in path]
+
+
+    def dijkstra(self): #destiny is nickname
+        if len(self.ady_matrix) >= 1:
+            D, Pr = shortest_path(
+                self.ady_matrix, 
+                directed=True, 
+                method='D', 
+                return_predecessors=True)
+            self.short_matrix = Pr
+       
+    
+    def get_shortest_path(self, destiny): #should be a character
         _from = self.all_nodes.index(self.entity)
+        destiny = self.all_nodes.index(destiny)
         path = [destiny]
         k = destiny
-        while Pr[_from, k] != -9999:
-            path.append(Pr[_from, k])
-            k = Pr[_from, k]
-        return path[::-1]
+        while self.short_matrix[_from, k] != -9999:
+            path.append(self.short_matrix[_from, k])
+            k = self.short_matrix[_from, k]
+        return self.parse_path(path[::-1]) 
+    
+    # def node_disconnected(self, event):
+    #     dis_node = event['from'].bare
+    #     nick_node = self.get_nickname(dis_node)
+    #     self.update_topo_package(self.neighbors[nick_node], 10)
 
 
     async def message(self, msg):
@@ -214,7 +244,7 @@ class LSR(Node):
                                 if neighbor != n_entity:
                                     self.flood(self.neighbors[neighbor], json.dumps(lsa))
                         else: #means that router reset its seq number
-                            print("[X] dropping package because is repited or old, from: {}, seq: {}, delta time_ {}".format(lsa['node'] ,lsa['seq'], d_time))
+                            ##print("[X] dropping package because is repited or old, from: {}, seq: {}, delta time_ {}".format(lsa['node'] ,lsa['seq'], d_time))
                             pass
                     else:
                         self.topo[lsa['node']] = lsa # update topo
@@ -224,11 +254,15 @@ class LSR(Node):
                             if neighbor != n_entity:
                                 self.flood(self.neighbors[neighbor], json.dumps(lsa))
                         self.update_ady_matrix()
-                print("This is topo for now: \n", self.topo)
+                #print("This is topo for now: \n", self.ady_matrix)
 
-            elif msg['body'][1:5] == "msg":
+            elif msg['body'][1:4] == "msg":
                 msg_parse = ET.fromstring(msg['body'])
-                bare_msg = msg_parse.attrib['msg']
-                
+                bare_msg = msg_parse.attrib['chat']
+                msg_to = msg_parse.attrib['to']
+                if msg_to != self.entity:
+                    self.send_msg(msg_to, bare_msg)
+                else:
+                    print("Incoming message: %s" % bare_msg)
             else:
                 pass
