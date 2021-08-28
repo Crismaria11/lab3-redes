@@ -1,1 +1,1 @@
-{"type":"names","config":{"A":"_a@alumchat.xyz","B":"roberto@alumchat.xyz","C":"bob@alumchat.xyz","D":"alice@alumchat.xyz"}}
+{"type":"names","config":{"A":"_a@alumchat.xyz","B":"_b@alumchat.xyz","C":"_c@alumchat.xyz","D":"_d@alumchat.xyz"}}

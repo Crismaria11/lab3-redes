@@ -35,7 +35,7 @@ EXPIRATION = 5
 
 class DVR(Node):
     
-    def __init__(self, jid, password, entity, asoc_nodes = None):
+    def __init__(self, jid, password, entity, asoc_nodes = None, t_keys = None):
         super().__init__(jid, password)
         self.DVR_seqnum = 0
         self.DVR = {}
@@ -43,11 +43,15 @@ class DVR(Node):
         self.basexmpp = BaseXMPP()
         self.neighbors = asoc_nodes #should be a dict
         self.neighbors_niknames = self.neighbors.keys() if self.neighbors != None else []
-        self.topo = {}
+        
+        self.topo = []
         self.all_nodes = [self.entity]
         self.ady_matrix = []
         self.prev_matrix = []
         self.build_topo_package()
+
+        # ---------
+        self.topo_vector = t_keys.sort()
 
     def send_hello(self, hto, hfrom):
         """
@@ -65,7 +69,7 @@ class DVR(Node):
         # print("Sending eco to {}".format(eco_to))
         self.send_message(
             mto=eco_to,
-            mbody="<eco time='%f'></eco>" % time(),
+            mbody="<eco time='%f' ></eco>" % time(),
             mfrom=eco_from
         )
         
@@ -73,21 +77,22 @@ class DVR(Node):
     def build_topo_package(self):
         """
         Function for package build about the network
+        destination | dist | next hop
         """
-        self.DVR['node'] = self.entity
-        self.DVR['seq'] = self.DVR_seqnum
-        self.DVR['age'] = None
-        self.DVR['weights'] = {}
-        for node in self.neighbors_niknames:
-            self.DVR['weights'][node] = 10 # means that they are unavailable
-        self.topo[self.DVR['node']] = self.DVR
+        for i in self.topo_keys:
+            if i == self.entity:
+                self.topo.append((i , 0, None))
+            self.topo.append((i , float('inf'), None))
         
 
     def update_topo_package(self, node, weight):
         """
         Function for package weights update+
         """
-        self.DVR['weights'][node] = weight
+
+        for i in self.topo:
+            if i[0] == node:
+                i[1] = weight
 
 
 
@@ -95,13 +100,9 @@ class DVR(Node):
         """
         Send the topo package to neighbors
         """
-        self.DVR_seqnum += 1
-        self.DVR['seq'] = self.DVR_seqnum
-        self.DVR['age'] = time()
-        self.topo[self.DVR['node']] = self.DVR
-        dvr_json = json.dumps(self.DVR)
+        dvr_json = json.dumps(self.topo)
         self.send_message(to, 
-            "<pack dvr='%s'></pack>" % dvr_json,
+            "<pack dvr='%s' from='%s'></pack>" % (dvr_json, self.entity),
             mfrom=self.boundjid,
         )
         
@@ -155,13 +156,16 @@ class DVR(Node):
     	self.prev_matrix = self.ady_matrix
 
     def update_ady_matrix(self):
-    	self.save_prev_matrix()
+        self.save_prev_matrix()
         length = len(self.all_nodes)
         self.ady_matrix = np.zeros((length, length),dtype=np.float16)
         for row_node in self.all_nodes:
             for col_node in self.topo[row_node]['weights'].keys():
                 row = self.all_nodes.index(row_node)
-                col = self.all_nodes.index(col_node)
+                if col_node in self.all_nodes:
+                    col = self.all_nodes.index(col_node)
+                else:
+                    return
                 self.ady_matrix[row][col] = self.topo[row_node]['weights'][col_node]
         
         # compare tables, update if diff with Bellman Ford
@@ -175,6 +179,30 @@ class DVR(Node):
         path = [destiny]
         k = destiny
 
+
+    def parse_path(self, path):
+        return [self.all_nodes[i] for i in path]
+    
+    def get_shortest_path(self, destiny): #should be a character
+        _from = self.all_nodes.index(self.entity)
+        destiny = self.all_nodes.index(destiny)
+        path = [destiny]
+        k = destiny
+        while self.ady_matrix[_from, k] != -9999:
+            path.append(self.ady_matrix[_from, k])
+            k = self.ady_matrix[_from, k]
+        return self.parse_path(path[::-1]) 
+    
+
+    def send_msg(self, to, msg): # to should be a character
+        path = self.get_shortest_path(to)
+        print("%s: my best path: %s" %(self.entity,path))
+        if len(path) > 1:
+            self.send_message(
+                mto=self.neighbors[path[1]],
+                mbody="<msg chat='%s' to='%s' ></msg>" %(msg, to),
+                mfrom=self.boundjid
+            )
 
 
     async def message(self, msg):
@@ -201,34 +229,16 @@ class DVR(Node):
                 parse = ET.fromstring(msg['body'])
                 pack_json = parse.attrib['dvr']
                 dvr = json.loads(pack_json)
-                n_entity = dvr['node']
-                if dvr['node'] not in self.topo.keys(): #means that is a new neighbor node, save it and resend (flood)
-                    self.topo[dvr['node']] = dvr
-                    for neighbor in self.neighbors_niknames:
-                        if neighbor != n_entity:
-                            self.flood(self.neighbors[neighbor], json.dumps(dvr))
-                    if dvr['node'] not in self.all_nodes:
-                        self.all_nodes.append(dvr['node'])
-                        self.all_nodes.sort()
-                    self.update_ady_matrix()
-                    
-                else: #check if it is not a new topo package
-                    d_time = abs(float(self.topo[dvr['node']]['age']) - float(dvr['age']))
-                    if self.topo[dvr['node']]['seq'] >= dvr['seq']: #already taken
-                        if d_time > EXPIRATION:
-                            print("[X] dropping package because is old", dvr['node'] ,dvr['seq'])
-                            pass #drop the package
-                        
-
-                    else:
-                        self.topo[dvr['node']] = dvr # update topo
-                        # apply flooding, sends package to child nodes except
-                        # node that the package comes from
-                        for neighbor in self.neighbors_niknames:
-                            if neighbor != n_entity:
-                                self.flood(self.neighbors[neighbor], json.dumps(dvr))
-                        self.update_ady_matrix()
-                print("This is topo for now: ", self.ady_matrix)
-
+                n_entity = parse.attrib['from']
+                
+            
+            elif msg['body'][1:4] == "msg":
+                msg_parse = ET.fromstring(msg['body'])
+                bare_msg = msg_parse.attrib['chat']
+                msg_to = msg_parse.attrib['to']
+                if msg_to != self.entity:
+                    self.send_msg(msg_to, bare_msg)
+                else:
+                    print("Incoming message: %s" % bare_msg)
             else:
                 pass

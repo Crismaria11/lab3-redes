@@ -37,7 +37,9 @@ class LSR(Node):
         self.all_nodes = [self.entity]
         self.ady_matrix = []
         self.build_topo_package()
+        self.static_neighbors = self.neighbors_niknames
         self.short_matrix = None
+
 
     def send_hello(self, hto, hfrom):
         """
@@ -128,6 +130,8 @@ class LSR(Node):
 
     def get_nickname(self, jid):
         key_list = list(self.neighbors.keys())
+        if jid not in self.neighbors.values():
+            return 
         val_list = list(self.neighbors.values())
 
         return key_list[val_list.index(jid)]
@@ -197,8 +201,10 @@ class LSR(Node):
     # def node_disconnected(self, event):
     #     dis_node = event['from'].bare
     #     nick_node = self.get_nickname(dis_node)
-    #     self.update_topo_package(self.neighbors[nick_node], 10)
-
+    #     if nick_node and nick_node in self.static_neighbors:
+    #         print("**** node has been disconnected {}:".format(nick_node))
+    #         self.update_topo_package(self.neighbors[nick_node], 0.99)
+        
 
     async def message(self, msg):
         if msg['type'] in ('normal', 'chat'):
@@ -207,8 +213,10 @@ class LSR(Node):
                 print("Recieved hello from neighbor, sending answer ...")
             elif msg['body'][1:4] == "eco":
                 xml_parse = ET.fromstring(msg['body'])
-                timestamp = xml_parse.attrib['time']
-                msg.reply("<a_eco time='%s'></a_eco>" % timestamp).send()
+                timestamp = float(xml_parse.attrib['time'])
+                if self.is_offline:
+                    timestamp -= 100
+                msg.reply("<a_eco time='%s'></a_eco>" % str(timestamp)).send()
             elif msg['body'][1:6] == "a_eco":
                 pack_from = msg['from'].bare
                 node_entity = self.get_nickname(pack_from)
@@ -236,7 +244,10 @@ class LSR(Node):
                     self.update_ady_matrix()
                     
                 else: #check if it is not a new topo package
-                    d_time = float(lsa['age']) - float(self.topo[lsa['node']]['age']) 
+                    try:
+                        d_time = float(lsa['age']) - float(self.topo[lsa['node']]['age']) 
+                    except TypeError as e:
+                        pass
                     if self.topo[lsa['node']]['seq'] >= lsa['seq']: #already taken
                         if d_time > EXPIRATION:
                             self.topo[lsa['node']] = lsa
@@ -254,7 +265,7 @@ class LSR(Node):
                             if neighbor != n_entity:
                                 self.flood(self.neighbors[neighbor], json.dumps(lsa))
                         self.update_ady_matrix()
-                #print("This is topo for now: \n", self.ady_matrix)
+                print("This is topo for now: \n", self.ady_matrix)
 
             elif msg['body'][1:4] == "msg":
                 msg_parse = ET.fromstring(msg['body'])

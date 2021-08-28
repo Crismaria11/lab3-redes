@@ -8,7 +8,6 @@ from node import Node
 from aioconsole import ainput
 
 from module import *
-from RoutingTable import *
 
 
 from LSR import LSR
@@ -44,6 +43,9 @@ async def main(node : LSR):
                 msg
             )
         elif opt == 2:
+            node.is_offline = True
+            print("Disconnecting ...")
+            await asyncio.sleep(10)
             is_connected = False
             node.disconnect()
         else:
@@ -55,6 +57,8 @@ async def main(node : LSR):
 if __name__ == "__main__":
 
     optp = OptionParser()
+
+    t_k = keys("topo.txt")
 
     optp.add_option('-d', '--debug', help='set loggin to DEBUG',
                     action='store_const', dest='loglevel',
@@ -96,8 +100,8 @@ if __name__ == "__main__":
     if opts.algorithm == 'flooding':
         node = Flood(opts.jid, opts.password, assignedNode, assignedNodes)
     elif opts.algorithm == 'dvr':
-        node = DVR(opts.jid, opts.password, assignedNode, assignedNodes)
-    elif opts.algorithm == 'lsa':
+        node = DVR(opts.jid, opts.password, assignedNode, assignedNodes, t_keys=t_k)
+    elif opts.algorithm == 'lsr':
         node = LSR(opts.jid, opts.password, assignedNode, assignedNodes)
     else:
         node = None

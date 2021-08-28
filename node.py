@@ -22,7 +22,7 @@ class Node(slixmpp.ClientXMPP):
     is_new : boolean, optional
         indicates if user is registering or authenticating
     """
-    def __init__(self, jid, password, nickname=None, is_new=False):
+    def __init__(self, jid, password, nickname=None, is_new=False, t_keys=None):
         super().__init__(jid, password)
 
         if not nickname:
@@ -32,6 +32,7 @@ class Node(slixmpp.ClientXMPP):
                 
         # Event for maganage conection
         self.connected_event = asyncio.Event()
+        self.topo_keys = t_keys
 
         #handlers for manage triggers
         self.add_event_handler('session_start', self.start)
@@ -53,6 +54,7 @@ class Node(slixmpp.ClientXMPP):
             self.register_plugin('xep_0066') # Out-of-band Data
             self['xep_0077'].force_registration = True
 
+        self.is_offline = False
 
     """
     Corrutine for register a new user 
@@ -95,7 +97,7 @@ class Node(slixmpp.ClientXMPP):
             await aprint("\n{}".format(msg['body']))
 
     def node_connected(self, event):
-        print('--->{} is online'.format(event['from'].bare))
+        pass
 
     def node_disconnected(self, event):
         print('--->{} is offline'.format(event['from'].bare))

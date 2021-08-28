@@ -10,6 +10,8 @@ Esteban del Valle 18221
 
 import json
 
+from numpy import inf
+
 def jsonToDict(path):
 	with open(path) as json_file:
 		return json.load(json_file)
@@ -22,3 +24,8 @@ def infoGetter(node,path):
 		return info['config']
 	else:
 		return -1
+
+def keys(path):
+	info = jsonToDict(path)
+	return list(info['config'].keys())
+
