@@ -1,5 +1,5 @@
 # Laboratorio 3 Redes - 2021
-Client that implements XMPP protocol to test routing algorithms.
+Client that implements XMPP protocol to test routing algorithms.<br>
 Domain `alumchat.xyz`
 
 
@@ -21,14 +21,19 @@ Domain `alumchat.xyz`
 1. Download all python files.
 2. Make sure *python* version is correct.
 3. Make sure all *requirements* and *libraries* are installed.
+```
+pip3 install -r requirements.txt
+```
 4. Run (multiple ways)
 ```
 python3 routing_sim.py -j [your JID] -p [your password] -a [flooding/dvr/lsr]
 ```
 
 ## Testing Topology & Test Users
-`{"A":["B","C"],"B": ["A"],"C":["D","A"],"D":["C"]}`
-`{"A":"_a@alumchat.xyz","B":"_b@alumchat.xyz","C":"_c@alumchat.xyz","D":"_d@alumchat.xyz"}`
+* A: _a@alumchat.xyz | Connected to: B,C
+* B: _b@alumchat.xyz | Connected to: A
+* C: _c@alumchat.xyz | Connected to: A,D
+* D: _d@alumchat.xyz | Connected to: C
 
 ## Tags
 Tag | Description |
