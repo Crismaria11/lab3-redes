@@ -48,10 +48,11 @@ class DVR(Node):
         self.all_nodes = [self.entity]
         self.ady_matrix = []
         self.prev_matrix = []
-        self.build_topo_package()
 
         # ---------
-        self.topo_keys = t_keys.sort()
+        self.topo_keys = t_keys
+
+        self.build_topo_package()
 
     def send_hello(self, hto, hfrom):
         """
@@ -81,8 +82,9 @@ class DVR(Node):
         """
         for i in self.topo_keys:
             if i == self.entity:
-                self.topo.append((i , 0, self.entity))
-            self.topo.append((i , float('inf'), None))
+                self.topo.append([i , 0, self.entity])
+            else:
+                self.topo.append([i , float('inf'), None])
         self.topo.sort()
 
     def update_topo_package(self, node, weight):
@@ -184,40 +186,41 @@ class DVR(Node):
         return [self.all_nodes[i] for i in path]
     
     def get_shortest_path(self, destiny): #should be a character
-        _from = self.all_nodes.index(self.entity)
-        destiny = self.all_nodes.index(destiny)
-        path = [destiny]
-        k = destiny
-        while self.ady_matrix[_from, k] != -9999:
-            path.append(self.ady_matrix[_from, k])
-            k = self.ady_matrix[_from, k]
-        return self.parse_path(path[::-1]) 
+        for i in self.topo:
+            if i[0] == destiny:
+                return i[2]
     
 
     def send_msg(self, to, msg): # to should be a character
         path = self.get_shortest_path(to)
-        print("%s: my best path: %s" %(self.entity,path))
-        if len(path) > 1:
-            self.send_message(
-                mto=self.neighbors[path[1]],
-                mbody="<msg chat='%s' to='%s' ></msg>" %(msg, to),
-                mfrom=self.boundjid
-            )
+        print("%s: sending via: %s" %(self.entity,path))
+        self.send_message(
+            mto=self.neighbors[path],
+            mbody="<msg chat='%s' to='%s' ></msg>" %(msg, to),
+            mfrom=self.boundjid
+        )
 
-    def update_tab(self, tab):
+    def update_tab(self, tab, tab_from):
+        min_distance = 0
         own_index = self.topo_keys.index(self.entity)
         for i in tab:
-            if i != tab[own_index]: # this could be a potential bug
+            if i != tab[own_index]: 
                 # distance from self node to i node
                 distance = tab[own_index][1] + i[1]
                 # minimize that distance
                 dest_node = i[0]
                 dest_node_index = self.topo_keys.index(dest_node)
                 routing_table_row = self.topo[dest_node_index]
-                min_distance = min(routing_table_row[1], distance)
-                # update self routing table
-                self.topo[dest_node_index][1] = min_distance
+                if len(self.neighbors_niknames) == 1:
+                    min_distance = distance
+                    self.topo[dest_node_index][2] = tab_from 
 
+                else:
+                    min_distance = min(routing_table_row[1], distance)
+                # update self routing table
+                    if min_distance != routing_table_row[1]:
+                        self.topo[dest_node_index][2] = tab_from 
+                self.topo[dest_node_index][1] = min_distance
 
     async def message(self, msg):
         if msg['type'] in ('normal', 'chat'):
@@ -242,8 +245,10 @@ class DVR(Node):
                 # n_entity = self.get_nickname(p_from)
                 parse = ET.fromstring(msg['body'])
                 pack_json = parse.attrib['dvr']
+                _from = parse.attrib['from']
                 dvr = json.loads(pack_json)
-                self.update_tab(dvr)
+                self.update_tab(dvr, _from)
+                #print("This is vector: ", self.topo)
                 
             elif msg['body'][1:4] == "msg":
                 msg_parse = ET.fromstring(msg['body'])

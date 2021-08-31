@@ -36,7 +36,7 @@ async def main(node : LSR):
         print("Choose an option:\n1.Send message\n2.Exit")
         opt = int( await ainput("Choose an option\n->"))
         if opt == 1:
-            dest = await ainput("Write jid dest: ")
+            dest = await ainput("Write dest: ")
             msg = await ainput("Write message: ")
             node.send_msg(
                 dest,
