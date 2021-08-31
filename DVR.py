@@ -51,7 +51,7 @@ class DVR(Node):
         self.build_topo_package()
 
         # ---------
-        self.topo_vector = t_keys.sort()
+        self.topo_keys = t_keys.sort()
 
     def send_hello(self, hto, hfrom):
         """
@@ -77,17 +77,17 @@ class DVR(Node):
     def build_topo_package(self):
         """
         Function for package build about the network
-        destination | dist | next hop
+        destination | distance | next hop
         """
         for i in self.topo_keys:
             if i == self.entity:
-                self.topo.append((i , 0, None))
+                self.topo.append((i , 0, self.entity))
             self.topo.append((i , float('inf'), None))
-        
+        self.topo.sort()
 
     def update_topo_package(self, node, weight):
         """
-        Function for package weights update+
+        Function for package weights update
         """
 
         for i in self.topo:
@@ -204,6 +204,20 @@ class DVR(Node):
                 mfrom=self.boundjid
             )
 
+    def update_tab(self, tab):
+        own_index = self.topo_keys.index(self.entity)
+        for i in tab:
+            if i != tab[own_index]: # this could be a potential bug
+                # distance from self node to i node
+                distance = tab[own_index][1] + i[1]
+                # minimize that distance
+                dest_node = i[0]
+                dest_node_index = self.topo_keys.index(dest_node)
+                routing_table_row = self.topo[dest_node_index]
+                min_distance = min(routing_table_row[1], distance)
+                # update self routing table
+                self.topo[dest_node_index][1] = min_distance
+
 
     async def message(self, msg):
         if msg['type'] in ('normal', 'chat'):
@@ -229,9 +243,8 @@ class DVR(Node):
                 parse = ET.fromstring(msg['body'])
                 pack_json = parse.attrib['dvr']
                 dvr = json.loads(pack_json)
-                n_entity = parse.attrib['from']
+                self.update_tab(dvr)
                 
-            
             elif msg['body'][1:4] == "msg":
                 msg_parse = ET.fromstring(msg['body'])
                 bare_msg = msg_parse.attrib['chat']
